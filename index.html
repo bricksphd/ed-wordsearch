@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>Word Search</title>
+  <script src="https://kit.fontawesome.com/e1835d7773.js" crossorigin="anonymous"></script>
+  <link href='https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons' rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.min.css" rel="stylesheet">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">-->
+  <style>
+    @import url('https://use.fontawesome.com/releases/v5.0.9/css/all.css');
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    .mono-space {
+      font-family: "Lucida Console", Monaco, monospace
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id='app'>
+    <v-app>
+      <v-content>
+        <v-container>
+          <v-row>
+            <v-col class="text-center display-1">
+              Welcome to the Word Search Maker
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <v-card>
+                <v-card-title>
+                  <v-container>
+                    <v-row>
+                      <v-col>
+                        <v-btn @click="tick()">Tick</v-btn>
+                        <div>Word Search</div>
+                        <div>Find these words</div>
+                        <span v-for="word in words" :key="word">
+                          {{word}}
+                        </span>
+                      </v-col>
+
+
+                    </v-row>
+                  </v-container>
+
+                </v-card-title>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <div v-for="(row,index) in result" :key="index" class="mono-space">
+                <span v-for="letter in row" style="padding:2px 8px">{{letter}}</span>
+              </div>
+
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <!--<div v-for="s in stack">
+                <div>{{s.position.x}}, {{s.position.y}}</div>
+                <div v-for="(row,index) in s.board" :key="index" class="mono-space">
+                  <span v-for="letter in row">{{letter}}</span>
+                </div>
+              </div>-->
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-content>
+    </v-app>
+
+  </div>
+
+
+
+  <script src='https://code.jquery.com/jquery-3.2.1.min.js'></script>
+  <script src='https://unpkg.com/vue'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify/dist/vuetify.js"></script>
+
+
+  <script>
+    var app = new Vue({
+      el: '#app',
+      vuetify: new Vuetify(),
+      data: {
+        result: [],
+        rows: 20,
+        cols: 20,
+        words: ["temple", "bible", "happy", "family", "scriptures", "church", "share"],
+        letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
+        stack: [],
+        startState: [],
+        allDirections: [
+          [1, 0],
+          [1, 1],
+          [0, 1],
+          [-1, 1],
+          [-1, 0],
+          [-1, -1],
+          [0, -1],
+          [1, -1]
+        ],
+
+
+      },
+      mounted() {
+        this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('A'))
+        for (let y = 0; y < this.rows; y++) {
+          for (let x = 0; x < this.cols; x++) {
+            this.result[y][x] = "."
+          }
+
+        }
+        this.startState = clone(this.result);
+        this.boot();
+
+      },
+      methods: {
+        boot() {
+          //Generate all random locations for the next word
+          //Shuffle them
+          //Try them all
+          //If none of them work, backtrack
+          let currentWord = this.words[0];
+          //let currentState = this.stack[this.stack.length - 1];
+          let possiblePositions = [];
+          for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+              let position = { x, y }
+              for (direction of this.allDirections) {
+                if (this.isValid(position, direction, currentWord, this.startState)) {
+                  possiblePositions.push({ x, y, direction });
+                }
+              }
+            }
+          }
+          let toAdd = []
+
+          if(possiblePositions.length == 0){
+            return console.log("There are no valid layouts")
+          }
+
+          for (position of possiblePositions) {
+            let finalState = this.insert(currentWord, position, this.startState);
+            toAdd.push({ position, board: finalState, count: 1 });
+          }
+
+          toAdd = this.shuffle(toAdd);
+
+          this.stack.push(...toAdd);
+        },
+        insert(word, position, board) {
+          let toReturn = clone(board);
+          let tempX = position.x;
+          let tempY = position.y;
+          for (i = 0; i < word.length; i++) {
+            let stateLetter = board[tempY][tempX];
+            toReturn[tempY][tempX] = word[i]
+
+            tempX += position.direction[0];
+            tempY += position.direction[1];
+
+          }
+          return toReturn;
+        },
+        randomLetter() {
+          return this.letters[Math.floor(Math.random() * this.letters.length)];
+          return "."
+        },
+        finalize() {
+          let state = clone(this.stack.pop());
+          for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+              if (state.board[y][x] == '.') {
+                state.board[y][x] = this.randomLetter();
+              }
+            }
+          }
+
+          this.result = state.board;
+
+
+        },
+        shuffle(array) {
+          let toReturn = [];
+          while (array.length > 0) {
+            toReturn.push(array.splice(Math.floor(Math.random() * array.length), 1)[0]);
+          }
+          return toReturn;
+        },
+        tick() {
+          if (this.stack[this.stack.length - 1].count == this.words.length) {
+            return this.finalize();
+          }
+
+          let valid = false;
+          do {
+            if(this.stack.length == 0){
+              return console.log("Out of options")
+            }
+            let state = clone(this.stack.pop());
+
+
+            let currentWord = this.words[state.count];
+            //let currentState = this.stack[this.stack.length - 1];
+            let possiblePositions = [];
+            for (let y = 0; y < this.rows; y++) {
+              for (let x = 0; x < this.cols; x++) {
+                let position = { x, y }
+                for (direction of this.allDirections) {
+
+                  if (this.isValid(position, direction, currentWord, state.board)) {
+                    possiblePositions.push({ x, y, direction });
+                  }
+                }
+              }
+            }
+
+            toAdd = [];
+
+            for (position of possiblePositions) {
+              let finalState = this.insert(currentWord, position, state.board);
+              toAdd.push({ position, board: finalState, count: state.count + 1 });
+            }
+
+            toAdd = this.shuffle(toAdd);
+
+            this.stack.push(...toAdd);
+            if(toAdd.length >0)
+            valid = true
+          }while(!valid);
+
+          console.log(this.stack[this.stack.length-1].count)
+
+
+          //TODO Randomize
+          /*let foundValid = false;
+          for(position of possiblePositions){
+            if(this.isValid(position, [1,0], currentWord, currentState));
+            foundValid = true;
+            break;
+          }*/
+        },
+        isValid(position, direction, word, state) {
+          if(!word)
+          console.log("bug")
+          let tempX = position.x;
+          let tempY = position.y;
+          for (i = 0; i < word.length; i++) {
+            if (tempX < 0 || tempY < 0 || tempY == state.length || tempX == state[0].length)
+              return false;
+            let stateLetter = state[tempY][tempX];
+            if (stateLetter == '.' || stateLetter == word[i]) {
+              //nonop
+            }
+            else {
+              return false;
+            }
+
+            tempX += direction[0];
+            tempY += direction[1];
+
+          }
+          return true;
+
+
+        }
+
+
+      },
+    });
+
+    function clone(x) {
+      return JSON.parse(JSON.stringify(x))
+    }
+  </script>
+
+</body>
+
+</html>
