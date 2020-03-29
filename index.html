@@ -45,14 +45,16 @@
                         <v-btn @click="tick()">Tick</v-btn>
                         <div>Word Search</div>
                         <div>Type the words below you want in the word search</div>
-                        <div><v-textarea v-model="startWords"></v-textarea></div>
                         <div>
-                          <v-btn @click="boot()">Update</v-btn>
+                          <v-textarea v-model="startWords"></v-textarea>
                         </div>
                         <div>
-                          <input v-model="showAnswers">
+                          <v-btn @click="run()">Update</v-btn>
                         </div>
-                        
+                        <div>
+                          <v-switch v-model="showAnswers"></v-switch>
+                        </div>
+
                       </v-col>
 
 
@@ -63,22 +65,23 @@
               </v-card>
             </v-col>
           </v-row>
-          <row>
-            <col>
-            <div>
-              Find the following words in the word search below
-            </div>
-            <div>
-              <span v-for="word in words" :key="word">
-                {{word}}
-              </span>
-            </div>
-            </col>
-          </row>
+          <v-row>
+            <v-col>
+              <div>
+                Find the following words in the word search below
+              </div>
+              <div>
+                <span v-for="word in words" :key="word">
+                  {{word}}
+                </span>
+              </div>
+            </v-col>
+          </v-row>
           <v-row>
             <v-col>
               <div v-for="(row,index) in result" :key="index" class="mono-space">
-                <span v-for="letter in row" style="padding:2px 8px">{{letter.toLowerCase()}}</span>
+                <span v-for="letter in row"
+                  style="padding:2px 8px">{{showAnswers ? letter : letter.toLowerCase()}}</span>
               </div>
 
             </v-col>
@@ -113,41 +116,51 @@
       vuetify: new Vuetify(),
       data: {
         result: [],
-        rows: 20,
-        cols: 20,
-        startWords:"temple bible happy family scriptuers",
+        rows: 6,
+        cols: 6,
+        startWords: "find all the words",
         words: ["temple", "bible", "happy", "family", "scriptures", "church", "share"],
         letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
         stack: [],
         startState: [],
+        showAnswers: true,
         allDirections: [
           [1, 0],
-          [1, 1],
+          /*[1, 1],
           [0, 1],
           [-1, 1],
           [-1, 0],
           [-1, -1],
           [0, -1],
-          [1, -1]
+          [1, -1]*/
         ],
 
 
       },
       mounted() {
         this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('A'))
-        for (let y = 0; y < this.rows; y++) {
-          for (let x = 0; x < this.cols; x++) {
-            this.result[y][x] = "."
-          }
 
-        }
-        this.startState = clone(this.result);
-        this.boot();
+        this.run();
 
       },
       methods: {
+        run() {
+          for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+              this.result[y][x] = "."
+            }
+
+          }
+          this.startState = clone(this.result);
+          this.boot();
+          let done = false;
+          for (let i = 0; i < 10; i++) {
+            let result = this.tick();
+            if (result) break;
+          }
+        },
         boot() {
-          
+
           //Generate all random locations for the next word
           //Shuffle them
           //Try them all
@@ -172,7 +185,8 @@
           let toAdd = []
 
           if (possiblePositions.length == 0) {
-            return console.log("There are no valid layouts")
+            console.log("There are no valid layouts")
+            return true;
           }
 
           for (position of possiblePositions) {
@@ -200,7 +214,7 @@
         },
         randomLetter() {
           return this.letters[Math.floor(Math.random() * this.letters.length)];
-          return "."
+          //return "."
         },
         finalize() {
           let state = clone(this.stack.pop());
@@ -213,6 +227,7 @@
           }
 
           this.result = state.board;
+          return true;
 
 
         },
@@ -231,7 +246,8 @@
           let valid = false;
           do {
             if (this.stack.length == 0) {
-              return console.log("Out of options")
+              console.log("Out of options")
+              return true;
             }
             let state = clone(this.stack.pop());
 
@@ -266,6 +282,7 @@
           } while (!valid);
 
           console.log(this.stack[this.stack.length - 1].count)
+          return false;
 
 
           //TODO Randomize
