@@ -42,11 +42,22 @@
                   <v-container>
                     <v-row>
                       <v-col>
-                        <v-btn @click="tick()">Tick</v-btn>
                         <div>Word Search</div>
                         <div>Type the words below you want in the word search</div>
                         <div>
                           <v-textarea v-model="startWords"></v-textarea>
+                        </div>
+                        <div>
+                          <v-slider min="5" max="20" v-model="rows" label="Rows" thumb-label="always"></v-slider>
+                          <v-slider min="5" max="20" v-model="cols" label="Columns" thumb-label="always"></v-slider>
+                        </div>
+                        <div class="ma-2 pa-2">
+                          <!--<v-radio-group v-model="difficulty" label="Choose the difficulty of word directions." row>
+                            <v-radio label="Easy" value="easy"></v-radio>
+                            <v-radio label="Medium" value="medium"></v-radio>
+                            <v-radio label="Hard" value="hard"></v-radio>
+                          </v-radio-group>-->
+                          <v-select label="Word Direction Difficulty" v-model="difficulty"  :items="difficultyOptions"></v-select>
                         </div>
                         <div>
                           <v-btn @click="run()">Update</v-btn>
@@ -65,8 +76,8 @@
               </v-card>
             </v-col>
           </v-row>
-          <v-row>
-            <v-col>
+          <v-row justify="center">
+            <v-col cols="6">
               <div>
                 Find the following words in the word search below
               </div>
@@ -77,23 +88,12 @@
               </div>
             </v-col>
           </v-row>
-          <v-row>
-            <v-col>
+          <v-row justify="center">
+            <v-col cols="6">
               <div v-for="(row,index) in result" :key="index" class="mono-space">
                 <span v-for="letter in row"
-                  style="padding:2px 8px">{{showAnswers ? letter : letter.toLowerCase()}}</span>
+                  style="padding:2px 8px">{{showAnswers ? (letter.toUpperCase() == letter? '.' : letter ): letter.toLowerCase()}}</span>
               </div>
-
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col>
-              <!--<div v-for="s in stack">
-                <div>{{s.position.x}}, {{s.position.y}}</div>
-                <div v-for="(row,index) in s.board" :key="index" class="mono-space">
-                  <span v-for="letter in row">{{letter}}</span>
-                </div>
-              </div>-->
             </v-col>
           </v-row>
         </v-container>
@@ -124,27 +124,62 @@
         stack: [],
         startState: [],
         showAnswers: true,
+        difficulty: "easy",
+        directions: [],
+        difficultyOptions:["easy", "medium", "hard"
+        ],
         allDirections: [
           [1, 0],
-          /*[1, 1],
+          [1, 1],
           [0, 1],
           [-1, 1],
           [-1, 0],
           [-1, -1],
           [0, -1],
-          [1, -1]*/
+          [1, -1]
         ],
 
 
       },
+      watch: {
+        difficulty(newValue, oldValue) {
+          console.log(newValue + " " + oldValue)
+          this.runWatchDifficulty();
+
+        }
+      },
       mounted() {
+        this.runWatchDifficulty();
         this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('A'))
 
         this.run();
 
       },
       methods: {
+        runWatchDifficulty() {
+          this.directions = [];
+          if (this.difficulty == "easy") {
+            this.directions.push(this.allDirections[0]);
+          }
+          else if (this.difficulty == "medium") {
+            this.directions.push(this.allDirections[0]);
+            this.directions.push(this.allDirections[1]);
+            this.directions.push(this.allDirections[2]);
+          }
+          else if (this.difficulty == "hard") {
+            this.directions.push(this.allDirections[0]);
+            this.directions.push(this.allDirections[1]);
+            this.directions.push(this.allDirections[2]);
+            this.directions.push(this.allDirections[3]);
+            this.directions.push(this.allDirections[4]);
+            this.directions.push(this.allDirections[5]);
+            this.directions.push(this.allDirections[6]);
+            this.directions.push(this.allDirections[7]);
+          }
+          this.run();
+        },
         run() {
+          this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('.'))
           for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
               this.result[y][x] = "."
@@ -152,7 +187,8 @@
 
           }
           this.startState = clone(this.result);
-          this.boot();
+          if (this.boot())
+            return console.log("Returned true in boot")
           let done = false;
           for (let i = 0; i < 10; i++) {
             let result = this.tick();
@@ -175,7 +211,7 @@
           for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
               let position = { x, y }
-              for (direction of this.allDirections) {
+              for (direction of this.directions) {
                 if (this.isValid(position, direction, currentWord, this.startState)) {
                   possiblePositions.push({ x, y, direction });
                 }
@@ -258,7 +294,7 @@
             for (let y = 0; y < this.rows; y++) {
               for (let x = 0; x < this.cols; x++) {
                 let position = { x, y }
-                for (direction of this.allDirections) {
+                for (direction of this.directions) {
 
                   if (this.isValid(position, direction, currentWord, state.board)) {
                     possiblePositions.push({ x, y, direction });
