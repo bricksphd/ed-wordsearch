@@ -44,10 +44,15 @@
                       <v-col>
                         <v-btn @click="tick()">Tick</v-btn>
                         <div>Word Search</div>
-                        <div>Find these words</div>
-                        <span v-for="word in words" :key="word">
-                          {{word}}
-                        </span>
+                        <div>Type the words below you want in the word search</div>
+                        <div><v-textarea v-model="startWords"></v-textarea></div>
+                        <div>
+                          <v-btn @click="boot()">Update</v-btn>
+                        </div>
+                        <div>
+                          <input v-model="showAnswers">
+                        </div>
+                        
                       </v-col>
 
 
@@ -58,10 +63,22 @@
               </v-card>
             </v-col>
           </v-row>
+          <row>
+            <col>
+            <div>
+              Find the following words in the word search below
+            </div>
+            <div>
+              <span v-for="word in words" :key="word">
+                {{word}}
+              </span>
+            </div>
+            </col>
+          </row>
           <v-row>
             <v-col>
               <div v-for="(row,index) in result" :key="index" class="mono-space">
-                <span v-for="letter in row" style="padding:2px 8px">{{letter}}</span>
+                <span v-for="letter in row" style="padding:2px 8px">{{letter.toLowerCase()}}</span>
               </div>
 
             </v-col>
@@ -98,6 +115,7 @@
         result: [],
         rows: 20,
         cols: 20,
+        startWords:"temple bible happy family scriptuers",
         words: ["temple", "bible", "happy", "family", "scriptures", "church", "share"],
         letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
         stack: [],
@@ -129,10 +147,15 @@
       },
       methods: {
         boot() {
+          
           //Generate all random locations for the next word
           //Shuffle them
           //Try them all
           //If none of them work, backtrack
+
+
+          //First generate a list of words from the text area
+          this.words = this.startWords.split(" ");
           let currentWord = this.words[0];
           //let currentState = this.stack[this.stack.length - 1];
           let possiblePositions = [];
@@ -148,7 +171,7 @@
           }
           let toAdd = []
 
-          if(possiblePositions.length == 0){
+          if (possiblePositions.length == 0) {
             return console.log("There are no valid layouts")
           }
 
@@ -184,7 +207,7 @@
           for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
               if (state.board[y][x] == '.') {
-                state.board[y][x] = this.randomLetter();
+                state.board[y][x] = this.randomLetter().toUpperCase();
               }
             }
           }
@@ -207,7 +230,7 @@
 
           let valid = false;
           do {
-            if(this.stack.length == 0){
+            if (this.stack.length == 0) {
               return console.log("Out of options")
             }
             let state = clone(this.stack.pop());
@@ -238,11 +261,11 @@
             toAdd = this.shuffle(toAdd);
 
             this.stack.push(...toAdd);
-            if(toAdd.length >0)
-            valid = true
-          }while(!valid);
+            if (toAdd.length > 0)
+              valid = true
+          } while (!valid);
 
-          console.log(this.stack[this.stack.length-1].count)
+          console.log(this.stack[this.stack.length - 1].count)
 
 
           //TODO Randomize
@@ -254,8 +277,8 @@
           }*/
         },
         isValid(position, direction, word, state) {
-          if(!word)
-          console.log("bug")
+          if (!word)
+            console.log("bug")
           let tempX = position.x;
           let tempY = position.y;
           for (i = 0; i < word.length; i++) {
