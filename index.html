@@ -42,12 +42,30 @@
                   <v-container>
                     <v-row>
                       <v-col>
-                        <v-btn @click="tick()">Tick</v-btn>
                         <div>Word Search</div>
-                        <div>Find these words</div>
-                        <span v-for="word in words" :key="word">
-                          {{word}}
-                        </span>
+                        <div>Type the words below you want in the word search</div>
+                        <div>
+                          <v-textarea v-model="startWords"></v-textarea>
+                        </div>
+                        <div>
+                          <v-slider min="5" max="20" v-model="rows" label="Rows" thumb-label="always"></v-slider>
+                          <v-slider min="5" max="20" v-model="cols" label="Columns" thumb-label="always"></v-slider>
+                        </div>
+                        <div class="ma-2 pa-2">
+                          <!--<v-radio-group v-model="difficulty" label="Choose the difficulty of word directions." row>
+                            <v-radio label="Easy" value="easy"></v-radio>
+                            <v-radio label="Medium" value="medium"></v-radio>
+                            <v-radio label="Hard" value="hard"></v-radio>
+                          </v-radio-group>-->
+                          <v-select label="Word Direction Difficulty" v-model="difficulty"  :items="difficultyOptions"></v-select>
+                        </div>
+                        <div>
+                          <v-btn @click="run()">Update</v-btn>
+                        </div>
+                        <div>
+                          <v-switch v-model="showAnswers"></v-switch>
+                        </div>
+
                       </v-col>
 
 
@@ -58,22 +76,24 @@
               </v-card>
             </v-col>
           </v-row>
-          <v-row>
-            <v-col>
-              <div v-for="(row,index) in result" :key="index" class="mono-space">
-                <span v-for="letter in row" style="padding:2px 8px">{{letter}}</span>
+          <v-row justify="center">
+            <v-col cols="6">
+              <div>
+                Find the following words in the word search below
               </div>
-
+              <div>
+                <span v-for="word in words" :key="word">
+                  {{word}}
+                </span>
+              </div>
             </v-col>
           </v-row>
-          <v-row>
-            <v-col>
-              <!--<div v-for="s in stack">
-                <div>{{s.position.x}}, {{s.position.y}}</div>
-                <div v-for="(row,index) in s.board" :key="index" class="mono-space">
-                  <span v-for="letter in row">{{letter}}</span>
-                </div>
-              </div>-->
+          <v-row justify="center">
+            <v-col cols="6">
+              <div v-for="(row,index) in result" :key="index" class="mono-space">
+                <span v-for="letter in row"
+                  style="padding:2px 8px">{{showAnswers ? (letter.toUpperCase() == letter? '.' : letter ): letter.toLowerCase()}}</span>
+              </div>
             </v-col>
           </v-row>
         </v-container>
@@ -96,12 +116,18 @@
       vuetify: new Vuetify(),
       data: {
         result: [],
-        rows: 20,
-        cols: 20,
+        rows: 6,
+        cols: 6,
+        startWords: "find all the words",
         words: ["temple", "bible", "happy", "family", "scriptures", "church", "share"],
         letters: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'],
         stack: [],
         startState: [],
+        showAnswers: true,
+        difficulty: "easy",
+        directions: [],
+        difficultyOptions:["easy", "medium", "hard"
+        ],
         allDirections: [
           [1, 0],
           [1, 1],
@@ -115,31 +141,77 @@
 
 
       },
-      mounted() {
-        this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('A'))
-        for (let y = 0; y < this.rows; y++) {
-          for (let x = 0; x < this.cols; x++) {
-            this.result[y][x] = "."
-          }
+      watch: {
+        difficulty(newValue, oldValue) {
+          console.log(newValue + " " + oldValue)
+          this.runWatchDifficulty();
 
         }
-        this.startState = clone(this.result);
-        this.boot();
+      },
+      mounted() {
+        this.runWatchDifficulty();
+        this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('A'))
+
+        this.run();
 
       },
       methods: {
+        runWatchDifficulty() {
+          this.directions = [];
+          if (this.difficulty == "easy") {
+            this.directions.push(this.allDirections[0]);
+          }
+          else if (this.difficulty == "medium") {
+            this.directions.push(this.allDirections[0]);
+            this.directions.push(this.allDirections[1]);
+            this.directions.push(this.allDirections[2]);
+          }
+          else if (this.difficulty == "hard") {
+            this.directions.push(this.allDirections[0]);
+            this.directions.push(this.allDirections[1]);
+            this.directions.push(this.allDirections[2]);
+            this.directions.push(this.allDirections[3]);
+            this.directions.push(this.allDirections[4]);
+            this.directions.push(this.allDirections[5]);
+            this.directions.push(this.allDirections[6]);
+            this.directions.push(this.allDirections[7]);
+          }
+          this.run();
+        },
+        run() {
+          this.result = [...Array(this.rows)].map(x => Array(this.cols).fill('.'))
+          for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+              this.result[y][x] = "."
+            }
+
+          }
+          this.startState = clone(this.result);
+          if (this.boot())
+            return console.log("Returned true in boot")
+          let done = false;
+          for (let i = 0; i < 10; i++) {
+            let result = this.tick();
+            if (result) break;
+          }
+        },
         boot() {
+
           //Generate all random locations for the next word
           //Shuffle them
           //Try them all
           //If none of them work, backtrack
+
+
+          //First generate a list of words from the text area
+          this.words = this.startWords.split(" ");
           let currentWord = this.words[0];
           //let currentState = this.stack[this.stack.length - 1];
           let possiblePositions = [];
           for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
               let position = { x, y }
-              for (direction of this.allDirections) {
+              for (direction of this.directions) {
                 if (this.isValid(position, direction, currentWord, this.startState)) {
                   possiblePositions.push({ x, y, direction });
                 }
@@ -148,8 +220,9 @@
           }
           let toAdd = []
 
-          if(possiblePositions.length == 0){
-            return console.log("There are no valid layouts")
+          if (possiblePositions.length == 0) {
+            console.log("There are no valid layouts")
+            return true;
           }
 
           for (position of possiblePositions) {
@@ -177,19 +250,20 @@
         },
         randomLetter() {
           return this.letters[Math.floor(Math.random() * this.letters.length)];
-          return "."
+          //return "."
         },
         finalize() {
           let state = clone(this.stack.pop());
           for (let y = 0; y < this.rows; y++) {
             for (let x = 0; x < this.cols; x++) {
               if (state.board[y][x] == '.') {
-                state.board[y][x] = this.randomLetter();
+                state.board[y][x] = this.randomLetter().toUpperCase();
               }
             }
           }
 
           this.result = state.board;
+          return true;
 
 
         },
@@ -207,8 +281,9 @@
 
           let valid = false;
           do {
-            if(this.stack.length == 0){
-              return console.log("Out of options")
+            if (this.stack.length == 0) {
+              console.log("Out of options")
+              return true;
             }
             let state = clone(this.stack.pop());
 
@@ -219,7 +294,7 @@
             for (let y = 0; y < this.rows; y++) {
               for (let x = 0; x < this.cols; x++) {
                 let position = { x, y }
-                for (direction of this.allDirections) {
+                for (direction of this.directions) {
 
                   if (this.isValid(position, direction, currentWord, state.board)) {
                     possiblePositions.push({ x, y, direction });
@@ -238,11 +313,12 @@
             toAdd = this.shuffle(toAdd);
 
             this.stack.push(...toAdd);
-            if(toAdd.length >0)
-            valid = true
-          }while(!valid);
+            if (toAdd.length > 0)
+              valid = true
+          } while (!valid);
 
-          console.log(this.stack[this.stack.length-1].count)
+          console.log(this.stack[this.stack.length - 1].count)
+          return false;
 
 
           //TODO Randomize
@@ -254,8 +330,8 @@
           }*/
         },
         isValid(position, direction, word, state) {
-          if(!word)
-          console.log("bug")
+          if (!word)
+            console.log("bug")
           let tempX = position.x;
           let tempY = position.y;
           for (i = 0; i < word.length; i++) {
